@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Merger — Merge JSON files locally in your browser</title>
+<meta name="description" content="Merge multiple JSON files right in your browser. No server uploads, no dependencies. Deep merge objects, concatenate arrays, live preview, one-click download. Free and open-source.">
+<meta name="keywords" content="json merge, json merger, merge json files, deep merge, client side json, privacy json converter, batch json merge">
+<meta name="author" content="VRS Labs">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://vrslabs.dev/json-merger">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="JSON Merger — Merge Files Locally">
+<meta property="og:description" content="Merge multiple JSON files right in your browser. Zero uploads, zero dependencies, privacy-first.">
+<meta property="og:url" content="https://vrslabs.dev/json-merger">
+<meta property="og:site_name" content="VRS Labs">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="JSON Merger — Merge Files Locally">
+<meta name="twitter:description" content="Privacy-first JSON file merger. Zero uploads, zero dependencies.">
+
+<!-- Structured Data -->
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"WebApplication",
+  "name":"JSON Merger",
+  "description":"Privacy-first JSON file merger — runs entirely in your browser. Zero server, zero dependencies.",
+  "url":"https://vrslabs.dev/json-merger",
+  "applicationCategory":"UtilitiesApplication",
+  "operatingSystem":"Any",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
+  "featureList":["Deep merge objects","Array concatenation","Live syntax-highlighted preview","Nest-duplicate toggle","JSON.parse error detection with line numbers"]
+}
+</script>
+<style>
+  :root {
+    --primary: #635bff;
+    --primary-hover: #5048e7;
+    --bg: #f8f9fc;
+    --card: #ffffff;
+    --text: #1a1f36;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --danger-bg: #fef2f2;
+    --danger-text: #dc2626;
+    --warning-bg: #fffbeb;
+    --warning-text: #d97706;
+    --success-bg: #f0fdf4;
+    --success-text: #16a34a;
+    --info-bg: #eff6ff;
+    --info-text: #2563eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  a { color: var(--primary); text-decoration: none; }
+
+  /* Header */
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .pill {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .pill-blue { background: #eef2ff; color: var(--primary); }
+  .pill-green { background: #f0fdf4; color: var(--success-text); }
+
+  /* Hero */
+  .hero {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 3rem 2rem 1rem;
+  }
+  .hero h1 {
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+  .hero p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    max-width: 520px;
+    margin: 1.5rem auto 0;
+    border: 2px dashed var(--border);
+    border-radius: 1rem;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--card);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--primary);
+    background: #f5f3ff;
+  }
+  .drop-zone.drag-over { transform: scale(1.01); }
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .drop-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 0.75rem;
+    color: var(--primary);
+  }
+  .drop-zone h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .drop-zone span {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .drop-zone p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+  }
+
+  /* File list */
+  .file-list {
+    max-width: 600px;
+    margin: 1.5rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .file-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.65rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .file-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+  .file-icon-valid { background: #f0fdf4; color: var(--success-text); }
+  .file-icon-invalid { background: #fef2f2; color: var(--danger-text); }
+  .file-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .file-remove {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .file-remove:hover { background: #fee2e2; color: #dc2626; }
+
+  /* Validation Errors */
+  .errors {
+    max-width: 600px;
+    margin: 0.75rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .error-card {
+    background: var(--danger-bg);
+    border: 1px solid #fecaca;
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  .error-icon { flex-shrink: 0; margin-top: 1px; }
+  .error-text { font-size: 0.78rem; line-height: 1.4; }
+  .error-text strong { font-weight: 600; }
+  .error-line {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.06);
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.35rem;
+    display: block;
+    margin-top: 0.25rem;
+    overflow-x: auto;
+    max-width: 100%;
+    white-space: pre;
+  }
+
+  /* Warnings (non-blocking) */
+  .warnings {
+    max-width: 600px;
+    margin: 0.5rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .warning-card {
+    background: var(--warning-bg);
+    border: 1px solid #fde68a;
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  .warning-text { font-size: 0.75rem; color: var(--warning-text); }
+
+  /* Info banner */
+  .info-banner {
+    max-width: 600px;
+    margin: 0.75rem auto 0;
+    background: var(--info-bg);
+    border: 1px solid #bfdbfe;
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: fadeSlideIn 0.25s ease-out;
+  }
+  .info-text { font-size: 0.75rem; color: var(--info-text); }
+
+  /* Controls bar */
+  .controls {
+    max-width: 600px;
+    margin: 1.25rem auto 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.4rem 0.7rem;
+  }
+  .toggle-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .toggle-switch input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #d1d5db;
+    border-radius: 999px;
+    transition: background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--primary); }
+  .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle-switch input:checked ~ .toggle-knob { left: 18px; }
+
+  .btn {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.45rem 1.1rem;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); transform: scale(1.03); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #f9fafb; }
+
+  /* Success Banner */
+  .success-banner {
+    max-width: 600px;
+    margin: 0.75rem auto 0;
+    background: var(--success-bg);
+    border: 1px solid #bbf7d0;
+    border-radius: 0.75rem;
+    padding: 0.65rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: fadeSlideIn 0.3s ease-out;
+  }
+  .success-banner p { font-size: 0.8rem; font-weight: 500; color: var(--success-text); }
+
+  /* Preview */
+  .preview-section {
+    max-width: 700px;
+    margin: 1.5rem auto 2rem;
+    animation: fadeSlideIn 0.3s ease-out;
+  }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .preview-title { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); }
+  .preview-count { font-size: 0.7rem; color: var(--text-muted); }
+  .preview-box { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+  .preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: #fafafa;
+  }
+  .preview-code {
+    padding: 0.75rem;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    max-height: 350px;
+    overflow-y: auto;
+    white-space: pre;
+    tab-size: 2;
+  }
+  .syntax-key { color: #6b7280; }
+  .syntax-string { color: #16a34a; }
+  .syntax-number { color: #dc2626; }
+  .syntax-bool { color: #7c3aed; }
+  .syntax-null { color: #7c3aed; font-style: italic; }
+
+  /* Footer */
+  footer {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding: 1rem 2rem;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 640px) {
+    header { padding: 0.75rem 1rem; }
+    .hero { padding: 2rem 1rem 1rem; }
+    .hero h1 { font-size: 1.4rem; }
+    .drop-zone { margin: 1rem 1rem 0; padding: 1.75rem 1.5rem; }
+    .controls { padding: 0 1rem; }
+    .preview-section { padding: 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="#635bff"/>
+      <path d="M7 8h10M7 12h7M7 16h9" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    JSON Merger
+  </a>
+  <div class="header-right">
+    <span class="pill pill-blue">Zero Dependencies</span>
+    <span class="pill pill-green">✓ No Uploads</span>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Merge multiple JSON files<br/>right in your browser.</h1>
+  <p>Drop your files, preview the merged result, and download. Everything runs client-side with no server uploads or external dependencies.</p>
+</section>
+
+<div class="drop-zone" id="dropZone">
+  <input type="file" id="fileInput" accept=".json,application/json,.jsonl,text/x-json" multiple />
+  <svg class="drop-icon" viewBox="0 0 48 48" fill="none">
+    <rect x="8" y="4" width="32" height="40" rx="4" stroke="currentColor" stroke-width="2"/>
+    <path d="M16 16h16M16 22h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="24" cy="30" r="4" fill="currentColor" opacity="0.3"/>
+    <path d="M24 27v6M21 30h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <h3>Drop JSON files here</h3>
+  <p>or <span>browse to select</span></p>
+  <p>Supports .json, .jsonl — order matters (top = lowest priority)</p>
+</div>
+
+<!-- File List -->
+<div class="file-list" id="fileList"></div>
+
+<!-- Errors -->
+<div class="errors" id="errors"></div>
+
+<!-- Warnings -->
+<div class="warnings" id="warnings"></div>
+
+<!-- Info -->
+<div class="info-banner" id="infoBanner" style="display:none;">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2"/><path d="M12 16v-4M12 8h.01" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/></svg>
+  <span class="info-text" id="infoText"></span>
+</div>
+
+<!-- Controls -->
+<div class="controls" id="controls" style="display:none;">
+  <div class="toggle-group">
+    <span class="toggle-label">Nest duplicates</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="nestToggle" onchange="onToggleChanged()" />
+      <span class="toggle-track"></span>
+      <span class="toggle-knob"></span>
+    </label>
+  </div>
+  <button class="btn btn-primary" id="mergeBtn" onclick="doMerge()">
+    Merge &amp; Preview
+  </button>
+  <button class="btn btn-secondary" id="clearBtn" onclick="clearAll()">Clear All</button>
+</div>
+
+<!-- Success Banner -->
+<div class="success-banner" id="successBanner" style="display:none;">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M8 12l3 3 5-6" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <p id="successText"></p>
+</div>
+
+<!-- Preview -->
+<section class="preview-section" id="previewSection" style="display:none;">
+  <div class="preview-header">
+    <span class="preview-title">Live Preview</span>
+    <span class="preview-count" id="previewCount"></span>
+  </div>
+  <div class="preview-box">
+    <div class="preview-toolbar">
+      <span style="font-size:0.75rem;color:var(--text-muted);font-weight:500;">merged.json</span>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-secondary" onclick="copyJson()" style="font-size:0.72rem;padding:0.35rem 0.75rem;" title="Copy to clipboard">Copy</button>
+        <button class="btn btn-primary" onclick="downloadJson()" style="font-size:0.72rem;padding:0.35rem 0.75rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v12m0 0l-4-4m4 4l4-4M4 18h16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+    <div class="preview-code" id="previewCode"></div>
+  </div>
+</section>
+
+<footer>
+  Your files never leave your browser. No server, no tracking, no storage.<br/>
+  Pure vanilla JavaScript — zero network requests after page load. MIT License.
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════════════ */
+const state = {
+  files: [],         // [{name, size, data|null, rawText, error, warnings}]
+  mergedResult: null,
+  hasErrors: false,
+};
+
+/* ── DOM references ─────────────────────────────────── */
+const $dropZone       = document.getElementById('dropZone');
+const $fileInput      = document.getElementById('fileInput');
+const $fileList       = document.getElementById('fileList');
+const $errors         = document.getElementById('errors');
+const $warningsEl     = document.getElementById('warnings');
+const $infoBanner     = document.getElementById('infoBanner');
+const $infoText       = document.getElementById('infoText');
+const $controls       = document.getElementById('controls');
+const $previewSection = document.getElementById('previewSection');
+const $previewCode    = document.getElementById('previewCode');
+const $previewCount   = document.getElementById('previewCount');
+const $successBanner  = document.getElementById('successBanner');
+const $successText    = document.getElementById('successText');
+
+/* ═══════════════════════════════════════════════════════
+   Drag & Drop
+   ═══════════════════════════════════════════════════════ */
+$dropZone.addEventListener('dragover', e => { e.preventDefault(); $dropZone.classList.add('drag-over'); });
+$dropZone.addEventListener('dragleave', () => { $dropZone.classList.remove('drag-over'); });
+$dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  $dropZone.classList.remove('drag-over');
+  addFiles([...e.dataTransfer.files]);
+});
+$fileInput.addEventListener('change', () => { addFiles([...$fileInput.files]); $fileInput.value = ''; });
+
+/* ═══════════════════════════════════════════════════════
+   File Handling
+   ═══════════════════════════════════════════════════════ */
+function addFiles(newFiles) {
+  for (const file of newFiles) {
+    if (!file.name.match(/\.json$/i) && file.type !== 'application/json' && !file.name.endsWith('.jsonl')) {
+      state.errors ??= [];
+      state.errors.push({ name: file.name || 'unknown file', original: 'Not a .json file. Accepted types: application/json, .json' });
+      render();
+      continue;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rawText = ev.target.result;
+      let parsed = null;
+      let parseErr = null;
+
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (err) {
+        parseErr = err;
+      }
+
+      // Detect common mistakes that produce valid-but-wrong JSON
+      const warnings = [];
+      if (parsed === null) {
+        warnings.push(`${file.name} parses as \`null\` — will override all keys with null on merge.`);
+      }
+      if (typeof parsed === 'string') {
+        warnings.push(`${file.name} is a bare JSON string — likely a formatting mistake (expecting object/array).`);
+      }
+      if (typeof parsed === 'number') {
+        warnings.push(`${file.name} is a bare number — unlikely intended as a merge target.`);
+      }
+
+      state.files.push({
+        name: file.name,
+        size: formatBytes(file.size),
+        data: parsed,
+        rawText,
+        error: parseErr,
+        warnings,
+      });
+      render();
+    };
+    reader.readAsText(file);
+  }
+}
+
+function removeFile(index) {
+  state.files.splice(index, 1);
+  render();
+}
+
+function clearAll() {
+  state.files = [];
+  state.mergedResult = null;
+  state.hasErrors = false;
+  delete state.errors;
+  render();
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / k ** i).toFixed(1)) + ' ' + sizes[i];
+}
+
+/* ═══════════════════════════════════════════════════════
+   Error Parsing
+   ═══════════════════════════════════════════════════════ */
+function parseJsonError(err, rawText) {
+  let message = err.message;
+  let lineNumber = null, contextLine = '';
+
+  // Extract position info: "Unexpected token … at position X"
+  const posMatch = message.match(/\bat\s+position\s+(\d+)/i);
+  if (posMatch) {
+    const pos = parseInt(posMatch[1], 10);
+    // Approximate line number by counting \n up to position
+    let cumulative = 0, lineNum = 1;
+    for (let i = 0; i < rawText.length && cumulative <= pos; i++) {
+      if (rawText[i] === '\n') { cumulative++; lineNum++; } else { cumulative++; }
+    }
+    lineNumber = Math.min(lineNum, rawText.split('\n').length);
+    const lines = rawText.split('\n');
+    contextLine = lines[Math.min(lineNumber - 1, lines.length - 1)]?.trim().substring(0, 70) || '';
+  }
+
+  return { original: message, lineNumber, contextLine };
+}
+
+/* ═══════════════════════════════════════════════════════
+   Rendering
+   ═══════════════════════════════════════════════════════ */
+function render() {
+  renderFiles();
+  renderErrors();
+  renderWarnings();
+  renderInfo();
+  renderControls();
+  renderPreview();
+}
+
+function renderFiles() {
+  if (!state.files.length) { $fileList.innerHTML = ''; return; }
+  $fileList.innerHTML = state.files.map((f, i) => `
+    <div class="file-item">
+      <div class="file-info">
+        <div class="file-icon ${f.error ? 'file-icon-invalid' : 'file-icon-valid'}">${f.error ? '✕' : '#'}</div>
+        <div>
+          <div class="file-name">${escHtml(f.name)}</div>
+          <div class="file-meta">${f.size}${f.error ? '' : ' • ✓ Valid'}</div>
+        </div>
+      </div>
+      <button class="file-remove" onclick="removeFile(${i})" title="Remove">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function renderErrors() {
+  const fileErrors = state.files.filter(f => f.error);
+  // Also include non-file errors (wrong extension etc.)
+  const allErrors = [
+    ...(state.errors || []),
+    ...fileErrors.map(f => ({ name: f.name, ...parseJsonError(f.error, f.rawText || '') }))
+  ];
+  state.hasErrors = allErrors.length > 0;
+  if (!allErrors.length) { $errors.innerHTML = ''; return; }
+  $errors.innerHTML = allErrors.map(e => `<div class="error-card">
+    <svg class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#dc2626" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/></svg>
+    <div class="error-text">
+      <strong>${escHtml(e.name)}</strong><br/>${escHtml(e.original)}${
+        e.lineNumber ? `<span class="error-line">L${e.lineNumber}: ${escHtml(e.contextLine)}</span>` : ''
+      }</div></div>`).join('');
+}
+
+function renderWarnings() {
+  const warns = state.files.flatMap(f => f.warnings || []);
+  if (!warns.length) { $warningsEl.innerHTML = ''; return; }
+  $warningsEl.innerHTML = warns.map(w => `<div class="warning-card">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#d97706" stroke-width="2"/><path d="M12 8v4m0 4h.01" stroke="#d97706" stroke-width="2" stroke-linecap="round"/></svg>
+    <span class="warning-text">${escHtml(w)}</span></div>`).join('');
+}
+
+function renderInfo() {
+  const validCount = state.files.filter(f => !f.error).length;
+  if (validCount === 0) { $infoBanner.style.display = 'none'; return; }
+  let msgs = [`${validCount} file(s) ready for merging`];
+  if (state.files.some(f => Array.isArray(f.data))) msgs.push('Arrays will be concatenated');
+  if (document.getElementById('nestToggle').checked) msgs.push('Duplicate keys → nested arrays');
+  $infoText.textContent = msgs.join(' · ');
+  $infoBanner.style.display = 'flex';
+}
+
+function renderControls() {
+  $controls.style.display = state.files.length ? 'flex' : 'none';
+  document.getElementById('mergeBtn').disabled = state.hasErrors;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Deep Merge Engine
+   ═══════════════════════════════════════════════════════ */
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && !(v instanceof RegExp);
+}
+
+function deepMerge(target, source, nestDuplicates) {
+  const result = Array.isArray(target) ? [...target] : { ...target };
+  for (const key of Object.keys(source)) {
+    const tVal = result[key], sVal = source[key];
+    if (isPlainObject(tVal) && isPlainObject(sVal)) {
+      result[key] = deepMerge(tVal, sVal, nestDuplicates);
+    } else if (Array.isArray(tVal) && Array.isArray(sVal)) {
+      result[key] = [...tVal, ...sVal];
+    } else if (nestDuplicates && tVal !== undefined && tVal !== null && sVal !== null) {
+      result[key] = [tVal, sVal];
+    } else if (sVal !== undefined || key in result) {
+      result[key] = sVal; // last wins
+    }
+  }
+  return result;
+}
+
+function doMerge() {
+  const invalid = state.files.filter(f => f.error);
+  if (invalid.length) { alert(`${invalid.length} file(s) have JSON errors. Fix or remove them before merging.`); return; }
+
+  const nestDupes = $nestToggle.checked;
+  let result;
+
+  if (state.files.length === 1) {
+    result = state.files[0].data;
+  } else {
+    result = {};
+    for (const f of state.files) {
+      if (f.data !== null && typeof f.data === 'object') result = deepMerge(result, f.data, nestDupes);
+    }
+  }
+
+  state.mergedResult = result;
+  $successText.textContent = `Merged ${state.files.length} file(s) successfully`;
+  $successBanner.style.display = 'flex';
+  setTimeout(() => { $successBanner.style.display = 'none'; }, 3000);
+  renderPreview();
+}
+
+/* ═══════════════════════════════════════════════════════
+   Preview
+   ═══════════════════════════════════════════════════════ */
+function renderPreview() {
+  if (state.mergedResult === null && state.mergedResult !== null) { $previewSection.style.display = 'none'; return; }
+  $previewSection.style.display = 'block';
+  const jsonStr = JSON.stringify(state.mergedResult, null, 2);
+  const keys = typeof state.mergedResult === 'object' && state.mergedResult !== null ? Object.keys(state.mergedResult) : [];
+  $previewCount.textContent = `${keys.length} keys · ${formatBytes(jsonStr.length)} output`;
+  $previewCode.innerHTML = '<code>' + highlightJson(jsonStr) + '</code>';
+}
+
+function highlightJson(str) {
+  str = escHtml(str);
+  str = str.replace(/"([^"\\]|\\.)*"(?=\s*:)/g, '<span class="syntax-key">$&</span>');
+  str = str.replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span class="syntax-string">$1</span>');
+  str = str.replace(/:\s*(-?\d+(?:\.\d+)?)($|[\s,\]\}])/g, ': <span class="syntax-number">$1</span>$2');
+  str = str.replace(/:\s*(true|false)\b/g, ': <span class="syntax-bool">$1</span>');
+  str = str.replace(/:\s*(null)\b/g, ': <span class="syntax-null">$1</span>');
+  return str;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Download / Copy
+   ═══════════════════════════════════════════════════════ */
+function downloadJson() {
+  const blob = new Blob([JSON.stringify(state.mergedResult, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'merged.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function copyJson() {
+  const text = JSON.stringify(state.mergedResult, null, 2);
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+  $successText.textContent = 'Copied to clipboard!';
+  $successBanner.style.display = 'flex';
+  setTimeout(() => { $successBanner.style.display = 'none'; }, 2000);
+}
+
+function onToggleChanged() {
+  if (state.mergedResult !== null && !state.files.some(f => f.error)) doMerge();
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+render();
+</script>
+</body>
+</html>
