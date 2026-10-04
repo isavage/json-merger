@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Rebuild Docker images without cache (--no-cache)'
+        required: false
+        type: boolean
+        default: false
+      cleanup:
+        description: 'Prune unused docker images'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Uncomment if VPS_* secrets are stored in a GitHub Environment:
+    environment: prod-IN
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: isavage/deploy@v3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          user: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 2222
+          target_dir: /docker/json-merger
+          exclude: '.git, .github'
+          # This project's compose service is built from the local Dockerfile
+          # (nginx:alpine + index.html), so build on the VPS instead of pulling.
+          build: true
+          pull: false
+          service_name: json-merger
+          # Ensure the shared external network exists before compose up
+          # (idempotent; reverse proxy joins the same network).
+          pre_deploy_command: "docker network create json.merger.net 2>/dev/null || true"
+          no_cache: ${{ inputs.no_cache || false }}
+          cleanup: ${{ inputs.cleanup || false }}
