@@ -5,10 +5,10 @@ services:
     networks:
       - json.merger.net
     expose:
-      - "3000"
+      - "80"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/index.html"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/index.html"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -38,8 +38,8 @@ jobs:
           build: true
           pull: false
           service_name: json-merger
-          # Ensure the shared external network exists before compose up
-          # (idempotent; reverse proxy joins the same network).
-          pre_deploy_command: "docker network create json.merger.net 2>/dev/null || true"
+          # Keep the network across deploys: `compose down` would delete
+          # json.merger.net (owned by this project) and disconnect the nginx proxy.
+          down: false
           no_cache: ${{ inputs.no_cache || false }}
           cleanup: ${{ inputs.cleanup || false }}
