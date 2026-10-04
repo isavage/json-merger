@@ -1,7 +1,11 @@
 services:
   json-merger:
     container_name: json.merger
-    build: .
+    build:
+      context: .
+      args:
+        # Defaults to production; set SITE_URL in .env (or -e) to override.
+        SITE_URL: ${SITE_URL:-https://json-merge.online/}
     networks:
       - json.merger.net
     expose:
